@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request, Query } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { CreateTransactionRequestDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -53,7 +53,7 @@ export class TransactionController {
       date: exchangeDto.date,
       type: exchangeDto.type,
       additional: exchangeDto.additional,
-      user: user,
+      user: user
     });
 
     return {
@@ -67,8 +67,12 @@ export class TransactionController {
   }
 
   @Get()
-  async findAll(@Request() req) {
-    const transactions = await this.transactionService.findAll(req.user.id);
+  async findAll(@Request() req, @Query() query) {
+    const transactions = await this.transactionService.findAll(
+      req.user.id,
+      +query.offset,
+      +query.size
+    );
     const wallets: any = await this.walletService.findAll(req.user.id);
 
     return transactions.map(t => {
@@ -82,9 +86,9 @@ export class TransactionController {
           '_id': t.wallet['_id'],
           name: t.wallet.name,
           type: t.wallet.type,
-          currency: t.wallet.currency,
+          currency: t.wallet.currency
         },
-        category: !t.category ? null :{
+        category: !t.category ? null : {
           '_id': t.category['_id'],
           name: t.category.name
         },
@@ -93,9 +97,9 @@ export class TransactionController {
           toWallet: wallets.find(w => w.id === t.additional.toWalletId),
           fromSum: t.additional.fromSum,
           commission: t.additional.commission,
-          toSum: t.additional.toSum,
+          toSum: t.additional.toSum
         }
-      }
+      };
     }).reverse();
   }
 

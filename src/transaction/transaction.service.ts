@@ -23,9 +23,11 @@ export class TransactionService {
     return createdWallet.save();
   }
 
-  findAll(userId: string) {
+  findAll(userId: string, offset: number, size: number) {
     return this.transactionModel.find({user: userId})
-      .limit(999999999)
+      .skip(offset ?? 0)
+      .limit(size)
+      .sort({date: 'asc'})
       .lean()
       .populate('wallet', 'id currency name type')
       .populate('category', 'id name');
@@ -34,7 +36,7 @@ export class TransactionService {
   async getStatistic(userId: string) {
     const userWallets: any = await this.walletService.findAll(userId);
     const userCategories: any = await this.categoryService.findAll(userId);
-    const userTransactions = await this.findAll(userId);
+    const userTransactions = await this.findAll(userId, 0, 9999999999);
 
     const totalIncome = [];
     const totalOutcome = [];
