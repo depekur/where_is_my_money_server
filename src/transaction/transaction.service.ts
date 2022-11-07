@@ -30,13 +30,14 @@ export class TransactionService {
       .sort({date: 'asc'})
       .lean()
       .populate('wallet', 'id currency name type')
-      .populate('category', 'id name');
+      .populate('category', 'id name color');
   }
 
   async getStatistic(userId: string) {
     const userWallets: any = await this.walletService.findAll(userId);
     const userCategories: any = await this.categoryService.findAll(userId);
-    const userTransactions = await this.findAll(userId, 0, 9999999999);
+    const userTransactions = await this.findAll(userId, 0, 99999999999);
+    const exchangeData = await this.walletService.getExchangeData();
 
     const totalIncome = [];
     const totalOutcome = [];
@@ -67,28 +68,42 @@ export class TransactionService {
       });
     });
 
-    const transactionsByCategory = userCategories.map(category => {
-      const categoryTransactions = userTransactions
-        .filter(transaction => transaction.category['_id'].toString() === category.id);
+    const totalEuroIncomeAmount = totalIncome.reduce((prev, curr) => {
+      return prev + this.walletService.exchangeToEuro(curr.total, curr.currency, exchangeData);
+    }, 0);
 
-      return {
-        categoryName: category.name,
-        categoryId: category['_id'].toString(),
-        transactionsCount: categoryTransactions.length,
-        total: categoryTransactions
-          .map(transaction => transaction.sum)
-          .reduce((prev, current) => prev + current, 0),
-        transactions: categoryTransactions,
-      }
-    });
+    const totalEuroExpenseAmount = totalOutcome.reduce((prev, curr) => {
+        return prev + this.walletService.exchangeToEuro(curr.total, curr.currency, exchangeData);
+      }, 0);
 
-    const statistic = {
-      totalIncome: totalIncome,
-      totalOutcome: totalOutcome,
-      byCategory: transactionsByCategory.filter(x => x.transactionsCount)
+    const transactionsByCategory = userCategories
+      .map(category => {
+        const categoryTransactions = userTransactions
+          .filter(transaction => transaction.type === TransactionType.EXPENSE)
+          .filter(transaction => transaction.category['_id'].toString() === category.id);
+
+        const totalEuro = categoryTransactions.reduce((prev, curr) => {
+          return prev + this.walletService.exchangeToEuro(curr.sum, curr.wallet.currency, exchangeData);
+        }, 0);
+
+        return {
+          categoryName: category.name,
+          categoryColor: category.color,
+          categoryId: category['_id'].toString(),
+          transactionsCount: categoryTransactions.length,
+          totalEuro: totalEuro.toFixed(2),
+          totalPercent: (totalEuro / totalEuroExpenseAmount * 100).toFixed(2),
+          transactions: categoryTransactions,
+        }
+      }).filter(x => x.transactionsCount);
+
+    return {
+      totalEuroIncomeAmount: totalEuroIncomeAmount.toFixed(2),
+      totalEuroExpenseAmount: totalEuroExpenseAmount.toFixed(2),
+      totalIncomeByWallets: totalIncome,
+      totalExpenseByWallets: totalOutcome,
+      byCategory: transactionsByCategory.sort((a, b) => b.totalEuro - a.totalEuro)
     }
-
-    return statistic;
   }
 
   findOne(id: string) {

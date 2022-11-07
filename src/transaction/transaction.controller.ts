@@ -90,7 +90,8 @@ export class TransactionController {
         },
         category: !t.category ? null : {
           '_id': t.category['_id'],
-          name: t.category.name
+          name: t.category.name,
+          color: t.category.color,
         },
         additional: !t.additional ? null : {
           fromWallet: wallets.find(w => w.id === t.additional.fromWalletId),

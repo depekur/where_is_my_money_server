@@ -26,6 +26,8 @@ export class CategoryController {
   async create(@Body() createCategoryDto: CreateCategoryDto, @Request() req) {
     const user = await this.userService.getUser(req.user.deviceId);
 
+    console.log(createCategoryDto);
+
     return this.categoryService.create({
       ...createCategoryDto,
       user: user,

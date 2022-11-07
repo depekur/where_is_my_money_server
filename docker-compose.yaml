@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  money_db:
+    image: 'mongo'
+    volumes:
+      - moneydb:/data/db
+    env_file:
+      - ./.env
+
+  backend:
+    build: .
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules
+      - /var/www/money.depekur.com/logs:/app/logs
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./.env
+    depends_on:
+      - money_db
+
+volumes:
+  moneydb:

@@ -9,6 +9,7 @@ import { TransactionType } from '../transaction/models/transaction-type';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { ExchangeRates, ExchangeRatesDocument } from './schemas/exchange-rates.schema';
+import { Currency } from './models/currency';
 
 @Injectable()
 export class WalletService {
@@ -52,6 +53,34 @@ export class WalletService {
 
   remove(id: number) {
     return `This action removes a #${id} wallet`;
+  }
+
+  exchangeToEuro(amount: number, currency: Currency, exchangeData: any): number {
+    const euroCode = 978;
+    const uahCode = 980;
+
+    const eurRates = exchangeData.find(x => x.currencyCodeA === euroCode);
+
+    if (amount === 0) {
+      return 0;
+    }
+
+    if (currency.isoCode === `${uahCode}`) {
+      return amount / eurRates.rateSell;
+    } else if (currency.isoCode === `${euroCode}`) {
+      return amount;
+    } else {
+      const walletCurrencyRates = exchangeData.find(x => {
+        return `${x.currencyCodeA}` === currency.isoCode;
+      });
+      let uahWalletBalance = 0;
+      if (walletCurrencyRates.rateBuy) {
+        uahWalletBalance = amount * walletCurrencyRates.rateBuy;
+      } else {
+        uahWalletBalance = amount * walletCurrencyRates.rateCross;
+      }
+      return (uahWalletBalance / eurRates.rateSell);
+    }
   }
 
   async getExchangeData() {

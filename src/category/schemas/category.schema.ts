@@ -9,6 +9,9 @@ export class Category {
   @Prop()
   name: string;
 
+  @Prop()
+  color: number;
+
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
   user: User;
 }

@@ -51,33 +51,10 @@ export class WalletController {
     const wallets = await this.walletService.findAll(req.user.id);
     const exchangeData = await this.walletService.getExchangeData();
 
-    const euroCode = 978;
-    const uahCode = 980;
     let totalEur = 0;
 
-    const eurRates = exchangeData.find(x => x.currencyCodeA === euroCode);
-
     wallets.forEach(w => {
-      if (w.balance === 0) {
-        return;
-      }
-
-      if (w.currency.isoCode === `${uahCode}`) {
-        totalEur += w.balance / eurRates.rateSell;
-      } else if (w.currency.isoCode === `${euroCode}`) {
-        totalEur += w.balance;
-      } else {
-        const walletCurrencyRates = exchangeData.find(x => {
-          return `${x.currencyCodeA}` === w.currency.isoCode;
-        });
-        let uahWalletBalance = 0;
-        if (walletCurrencyRates.rateBuy) {
-          uahWalletBalance = w.balance * walletCurrencyRates.rateBuy;
-        } else {
-          uahWalletBalance = w.balance * walletCurrencyRates.rateCross;
-        }
-        totalEur += (uahWalletBalance / eurRates.rateSell);
-      }
+      totalEur += this.walletService.exchangeToEuro(w.balance, w.currency, exchangeData);
     });
 
     return {
