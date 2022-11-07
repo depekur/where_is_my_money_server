@@ -15,7 +15,7 @@ services:
       - /app/node_modules
       - /var/www/money.depekur.com/logs:/app/logs
     ports:
-      - '3000:3000'
+      - '3111:3000'
     env_file:
       - ./.env
     depends_on:
