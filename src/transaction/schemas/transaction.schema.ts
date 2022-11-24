@@ -20,6 +20,9 @@ export class Transaction {
   date: string;
 
   @Prop()
+  jsDate: Date;
+
+  @Prop()
   type: TransactionType;
 
   @Prop()

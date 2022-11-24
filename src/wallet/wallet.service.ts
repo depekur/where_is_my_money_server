@@ -88,7 +88,7 @@ export class WalletService {
     latest = latest[0];
 
     if (!latest) {
-      return await this.requestExchangeRates();
+      return this.requestExchangeRates();
     }
 
     const requestedAt = new Date(latest['requestedAt']).getTime();
@@ -97,7 +97,13 @@ export class WalletService {
     interval = interval * 60 * 60 * 1000; // hours to ms
 
     if ((now - requestedAt) > interval) {
-      return this.requestExchangeRates();
+      const rates = await this.requestExchangeRates();
+
+      if (rates) {
+        return rates;
+      } else {
+        return latest.rates;
+      }
     }
 
     return latest.rates;
@@ -117,6 +123,7 @@ export class WalletService {
       return data.data;
     } catch (e) {
       console.log(e);
+      return null;
     }
   }
 

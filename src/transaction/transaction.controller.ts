@@ -6,6 +6,8 @@ import { UserService } from '../user/user.service';
 import { WalletService } from '../wallet/wallet.service';
 import { CategoryService } from '../category/category.service';
 import { ExchangeDto } from './dto/exchange.dto';
+import { TransactionType } from './models/transaction-type';
+import { QueryStatisticDto } from './dto/query-statistic.dto';
 
 @Controller('transaction')
 export class TransactionController {
@@ -35,6 +37,8 @@ export class TransactionController {
 
   @Post('exchange')
   async exchange(@Body() exchangeDto: ExchangeDto, @Request() req) {
+    console.log('exchange');
+
     const user = await this.userService.getUser(req.user.deviceId);
 
     const walletFrom = await this.walletService.findOne(exchangeDto.additional.fromWalletId);
@@ -57,18 +61,18 @@ export class TransactionController {
     });
 
     return {
-      ...transaction,
+      ...transaction['_doc'],
       additional: {
         ...transaction.additional,
-        walletFrom: walletFrom,
-        walletTo: walletTo
+        fromWallet: walletFrom,
+        toWallet: walletTo
       }
     };
   }
 
   @Get()
   async findAll(@Request() req, @Query() query) {
-    const transactions = await this.transactionService.findAll(
+    const transactions = await this.transactionService.findAllWithOffset(
       req.user.id,
       +query.offset,
       +query.size
@@ -105,8 +109,11 @@ export class TransactionController {
   }
 
   @Get('statistic')
-  async getStatistic(@Request() req) {
-    return this.transactionService.getStatistic(req.user.id);
+  async getStatistic(@Request() req, @Query() query: QueryStatisticDto) {
+    return this.transactionService.getStatistic(
+      req.user.id,
+      query
+    );
   }
 
   @Get(':id')
@@ -119,8 +126,40 @@ export class TransactionController {
     return this.transactionService.update(id, updateTransactionDto);
   }
 
+  @Get('update/dates')
+  async updateDates() {
+    return this.transactionService.updateAllDates();
+  }
+
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string) {
+    const transaction = await this.transactionService.findOne(id);
+    switch (transaction.type) {
+      case TransactionType.EXPENSE:
+        await this.walletService.update(transaction.wallet['_id'], {
+          balance: transaction.wallet.balance + transaction.sum
+        });
+        break;
+      case TransactionType.INCOME:
+        await this.walletService.update(transaction.wallet['_id'], {
+          balance: transaction.wallet.balance - transaction.sum
+        });
+        break;
+      case TransactionType.EXCHANGE:
+        const walletFrom = await this.walletService.findOne(transaction.additional.fromWalletId);
+        const walletTo = await this.walletService.findOne(transaction.additional.toWalletId);
+
+        await this.walletService.update(transaction.additional.fromWalletId, {
+          balance: walletFrom.balance + transaction.additional.fromSum
+        });
+
+        await this.walletService.update(transaction.additional.toWalletId, {
+          balance: walletTo.balance - transaction.additional.toSum
+        });
+
+        break;
+    }
+
     return this.transactionService.remove(id);
   }
 }
